@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../api/api.dart';
+import '../models/domain/config.dart';
 
 class SessionManager {
   static const _kTokenKey = 'auth_token';
@@ -8,8 +9,8 @@ class SessionManager {
   late final ApiClient client;
   String? _token;
 
-  // You can change this to match your backend URL.
-  String baseUrl = const String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:5000');
+  // Base URL centralisée via Config
+  String baseUrl = Config.baseUrl;
 
   SessionManager._internal() {
     client = ApiClient(baseUrl: baseUrl);

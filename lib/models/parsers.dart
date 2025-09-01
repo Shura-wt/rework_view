@@ -6,7 +6,7 @@ import 'domain/batiment.dart';
 import 'domain/site.dart';
 import 'map/carte.dart';
 import 'api/api_payload.dart';
-import 'dto/config_entry.dart';
+import 'domain/config.dart';
 import 'dto/role.dart';
 import 'dto/etage_lite.dart';
 import 'dto/site_lite.dart';
@@ -46,9 +46,9 @@ Carte carteFromJsonString(String source) =>
     Carte.fromJson(asMap(jsonDecode(source)));
 
 // Config / Rôles / Étages / Sites / Relations / Users
-List<ConfigEntry> configListFromJsonString(String source) =>
+List<Config> configListFromJsonString(String source) =>
     asList(jsonDecode(source))
-        .map((e) => ConfigEntry.fromJson(asMap(e)))
+        .map((e) => Config.fromJson(asMap(e)))
         .toList(growable: false);
 List<Role> rolesFromJsonString(String source) =>
     asList(jsonDecode(source))

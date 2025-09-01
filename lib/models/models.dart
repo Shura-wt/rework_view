@@ -7,6 +7,7 @@ export 'domain/baes.dart';
 export 'domain/etage.dart';
 export 'domain/batiment.dart';
 export 'domain/site.dart';
+export 'domain/config.dart';
 export 'api/api_payload.dart';
 export 'dto/config_entry.dart';
 export 'dto/role.dart';

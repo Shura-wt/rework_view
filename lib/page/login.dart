@@ -36,11 +36,17 @@ class _LoginState extends State<LoginPage> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Échec de connexion: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Échec de connexion: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _handleLogin() {
+    if (!_loading) {
+      _doLogin();
     }
   }
 
@@ -48,43 +54,66 @@ class _LoginState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Connexion', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _loginCtrl,
-                  decoration: const InputDecoration(labelText: 'Identifiant'),
-                  autofillHints: const [AutofillHints.username],
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_passwordFocus),
+        child: GradiantBackground.getSafeAreaGradiant(
+          context,
+          Center(
+            child: SizedBox(
+              width: 500,
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _passwordCtrl,
-                  decoration: const InputDecoration(labelText: 'Mot de passe'),
-                  obscureText: true,
-                  autofillHints: const [AutofillHints.password],
-                  focusNode: _passwordFocus,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) {
-                    if (!_loading) _doLogin();
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Form(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Connexion',
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          controller: _loginCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Nom d\'utilisateur',
+                            border: OutlineInputBorder(),
+                          ),
+                          autocorrect: false,
+                          autofillHints: const [AutofillHints.username],
+                          textInputAction: TextInputAction.next,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _passwordCtrl,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Mot de passe',
+                            border: OutlineInputBorder(),
+                          ),
+                          autocorrect: false,
+                          autofillHints: const [AutofillHints.password],
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _handleLogin(),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: _loading ? null : _handleLogin,
+                          child: _loading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Connexion'),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _loading ? null : _doLogin,
-                  child: _loading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Se connecter'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -92,4 +121,3 @@ class _LoginState extends State<LoginPage> {
     );
   }
 }
-

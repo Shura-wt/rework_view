@@ -1,6 +1,7 @@
 part of '../main.dart';
 
 class GradiantBackground {
+
   static Widget getSafeAreaGradiant( BuildContext context,Widget child) {
     return SafeArea(
       child: Container(

@@ -8,7 +8,7 @@ import '../map/carte.dart';
 import '../dto/user.dart';
 import '../dto/role.dart';
 import '../dto/relation.dart';
-import '../dto/config_entry.dart';
+import '../domain/config.dart';
 
 class ApiPayload {
   // Données hiérarchiques principales
@@ -25,7 +25,7 @@ class ApiPayload {
   final List<User> users;
   final List<Role> roles;
   final List<Relation> relations;
-  final List<ConfigEntry> config;
+  final List<Config> config;
 
   ApiPayload({
     required this.sites,
@@ -37,7 +37,7 @@ class ApiPayload {
     List<User>? users,
     List<Role>? roles,
     List<Relation>? relations,
-    List<ConfigEntry>? config,
+    List<Config>? config,
   })  : batiments = batiments ?? const <Batiment>[],
         etages = etages ?? const <Etage>[],
         baes = baes ?? const <Baes>[],
@@ -46,7 +46,7 @@ class ApiPayload {
         users = users ?? const <User>[],
         roles = roles ?? const <Role>[],
         relations = relations ?? const <Relation>[],
-        config = config ?? const <ConfigEntry>[];
+        config = config ?? const <Config>[];
 
   factory ApiPayload.fromJson(Map<String, dynamic> json) => ApiPayload(
         sites: asList(json['sites']).map((e) => Site.fromJson(asMap(e))).toList(growable: false),
@@ -58,7 +58,7 @@ class ApiPayload {
         users: asList(json['users']).map((e) => User.fromJson(asMap(e))).toList(growable: false),
         roles: asList(json['roles']).map((e) => Role.fromJson(asMap(e))).toList(growable: false),
         relations: asList(json['relations']).map((e) => Relation.fromJson(asMap(e))).toList(growable: false),
-        config: asList(json['config']).map((e) => ConfigEntry.fromJson(asMap(e))).toList(growable: false),
+        config: asList(json['config']).map((e) => Config.fromJson(asMap(e))).toList(growable: false),
       );
 
   Map<String, dynamic> toJson() => {
