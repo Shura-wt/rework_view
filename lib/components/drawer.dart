@@ -8,10 +8,24 @@ class LeftDrawer extends StatefulWidget {
 }
 
 class _LeftDrawerState extends State<LeftDrawer> {
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    return Drawer(
-      child: Text('Drawer'),
+    return SafeArea(
+      child: Drawer(
+        child: Text('Drawer content'),
+      ),
     );
   }
 }
