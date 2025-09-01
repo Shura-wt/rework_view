@@ -12,3 +12,4 @@ export 'cartes_api.dart';
 export 'general_api.dart';
 export 'roles_api.dart';
 export 'config_api.dart';
+export 'error_handler.dart';

@@ -31,17 +31,18 @@ class _LoginState extends State<LoginPage> {
       return;
     }
     setState(() => _loading = true);
-    try {
-      await SessionManager.instance.login(login: login, password: password);
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home');
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Échec de connexion: $e')));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    await ApiErrorHandler.run<Map<String, dynamic>>(
+      context,
+      () => SessionManager.instance.login(login: login, password: password),
+      action: 'login',
+      onSuccess: (_) async {
+        // Start global polling for statuses now that we are authenticated
+        await LatestStatusPoller.instance.start(interval: const Duration(seconds: 5));
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      },
+    );
+    if (mounted) setState(() => _loading = false);
   }
 
   void _handleLogin() {

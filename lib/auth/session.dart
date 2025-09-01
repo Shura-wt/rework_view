@@ -38,10 +38,12 @@ class SessionManager {
   Future<void> logout() async {
     try {
       await AuthApi(client).logout();
-    } catch (_) {
-      // Ignore network errors on logout; still clear locally
+      await _saveToken(null);
+    } on Object {
+      // Clear locally even if server failed, then rethrow so UI can inform the user
+      await _saveToken(null);
+      rethrow;
     }
-    await _saveToken(null);
   }
 
   Future<void> _saveToken(String? token) async {

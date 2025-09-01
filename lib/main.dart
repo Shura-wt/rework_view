@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'auth/session.dart';
+import 'api/api.dart';
+import 'services/status_poller.dart';
+import 'widgets/status_per_baes_list.dart';
+import 'widgets/status_history_per_baes_list.dart';
 
 part 'page/admin/gestion_carte.dart';
 part 'page/admin/gestion_utilisateurs.dart';
@@ -18,6 +22,10 @@ part 'components/gradiant_background.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SessionManager.instance.init();
+  // Start global polling if already authenticated
+  if (SessionManager.instance.isAuthenticated) {
+    await LatestStatusPoller.instance.start(interval: const Duration(seconds: 5));
+  }
   runApp(const MyApp());
 }
 

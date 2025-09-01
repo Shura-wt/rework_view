@@ -52,7 +52,17 @@ class ApiClient {
     } catch (_) {
       body = res.body;
     }
-    throw ApiException('HTTP $code', statusCode: code, body: body);
+    String msg = 'HTTP $code';
+    if (body is Map) {
+      final map = body.cast<String, dynamic>();
+      final backendMsg = (map['error'] ?? map['message'])?.toString();
+      if (backendMsg != null && backendMsg.isNotEmpty) {
+        msg = 'HTTP $code: $backendMsg';
+      }
+    } else if (body is String && body.isNotEmpty) {
+      msg = 'HTTP $code: $body';
+    }
+    throw ApiException(msg, statusCode: code, body: body);
   }
 
   Future<dynamic> get(String path, {Map<String, dynamic>? query, Map<String, String>? headers}) async {

@@ -113,9 +113,19 @@ class _HomePageState extends State<HomePage> {
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: () async {
-                await SessionManager.instance.logout();
-                if (!mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
+                try {
+                  // Stop polling before logging out to avoid authenticated calls after session cleared
+                  LatestStatusPoller.instance.stop();
+                  await SessionManager.instance.logout();
+                } on Object catch (e) {
+                  ApiErrorHandler.logDebug(e, context: 'logout');
+                  if (mounted) {
+                    ApiErrorHandler.showSnackBar(context, e, action: 'logout');
+                  }
+                } finally {
+                  if (!mounted) return;
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
               },
               tooltip: "Se déconnecter",
             ),
