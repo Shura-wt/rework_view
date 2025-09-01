@@ -16,3 +16,4 @@ export 'dto/etage_lite.dart';
 export 'dto/relation.dart';
 export 'dto/user.dart';
 export 'parsers.dart';
+export 'error_info.dart';

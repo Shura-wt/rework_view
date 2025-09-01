@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/status_poller.dart';
 import '../models/models.dart';
+import '../models/error_info.dart';
 
 /// Widget de test: affiche l'historique complet des statuts par BAES.
 /// Met en surbrillance (vert) le dernier statut reçu pour chaque BAES.
@@ -37,7 +38,7 @@ class StatusHistoryPerBaesList extends StatelessWidget {
                   title: Text('BAES #$baesId — ${list.length} statut(s)'),
                   initiallyExpanded: false,
                   children: list.map((s) {
-                    final label = LatestStatusPoller.errorCodeToLabel(s.erreur ?? -1);
+                    final info = StatusErrorVisuals.infoFor(s.erreur);
                     final updated = s.updatedAt ?? s.timestamp; // déjà UTC+02 côté parseurs
                     final solved = s.isSolved == true ? 'résolu' : 'non résolu';
                     final ignored = s.isIgnored == true ? ' (ignoré)' : '';
@@ -58,9 +59,9 @@ class StatusHistoryPerBaesList extends StatelessWidget {
                     final color = isLatest ? Colors.green : null;
                     return ListTile(
                       dense: true,
-                      leading: Icon(Icons.circle, size: 10, color: isLatest ? Colors.green : Colors.grey.shade400),
+                      leading: Icon(info.icon, color: color ?? Colors.grey.shade700),
                       title: Text(
-                        '$label$ignored',
+                        '${info.name}$ignored',
                         style: TextStyle(color: color, fontWeight: isLatest ? FontWeight.bold : FontWeight.w400),
                       ),
                       subtitle: Text('État: $solved • MAJ: ${updated ?? '-'}'),
