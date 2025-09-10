@@ -10,7 +10,7 @@ class Config {
   static const String baseUrlDev = "http://localhost:5000";
 
   // Environnement de production
-  static const String baseUrlProd = "http://apibaes.isymap.com:5000";
+  static const String baseUrlProd = "https://apibaes.isymap.com";
 
   // Pour sélectionner l'environnement à utiliser, vous pouvez définir une constante :
   static const bool isProduction = false;

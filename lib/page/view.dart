@@ -15,7 +15,26 @@ class _VisualisationCartePageState extends State<VisualisationCartePage>{
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: const StatusHistoryPerBaesList(),
+
         ),
+      ),
+      floatingActionButton: VersatileFabColumn(
+        fabs: [
+          VersatileFab.icon(
+            onPressed: () { Navigator.of(context).pop(); },
+            icon: Icons.arrow_back,
+            tooltip: 'Retour',
+          ),
+          VersatileFab.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Ajouter')),
+              );
+            },
+            icon: Icons.add,
+            tooltip: 'Ajouter',
+          ),
+        ],
       ),
     );
   }

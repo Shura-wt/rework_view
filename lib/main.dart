@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rework_view/widgets/versatile_fab.dart';
 import 'auth/session.dart';
 import 'api/api.dart';
 import 'services/status_poller.dart';
