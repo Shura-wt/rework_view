@@ -14,8 +14,8 @@ part 'page/home.dart';
 part 'page/login.dart';
 part 'page/view.dart';
 
-part 'components/drawer.dart';
-part 'components/gradiant_background.dart';
+part 'widgets/drawer.dart';
+part 'widgets/gradiant_background.dart';
 
 // Models
 
