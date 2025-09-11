@@ -420,6 +420,79 @@
         ]
       }
     },
+    "/auth/me": {
+      "get": {
+        "description": "Obtenir l'utilisateur courant (route sous /auth). N\u00e9cessite un header Authorization: Bearer <token>.",
+        "parameters": [
+          {
+            "description": "Bearer <token>",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Utilisateur courant avec ses r\u00f4les et sites accessibles.",
+            "schema": {
+              "properties": {
+                "id": {
+                  "example": 12,
+                  "type": "integer"
+                },
+                "login": {
+                  "example": "jdoe",
+                  "type": "string"
+                },
+                "roles": {
+                  "example": [
+                    "user",
+                    "admin"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sites": {
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "example": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "example": "Site A",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "properties": {
+                "error": {
+                  "example": "unauthorized",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
     "/baes/": {
       "get": {
         "description": "R\u00e9cup\u00e8re la liste de tous les BAES.",
@@ -2509,6 +2582,79 @@
         ]
       }
     },
+    "/me": {
+      "get": {
+        "description": "Obtenir l'utilisateur courant et la liste des sites accessibles. N\u00e9cessite un header Authorization: Bearer <token>.",
+        "parameters": [
+          {
+            "description": "Bearer <token>",
+            "in": "header",
+            "name": "Authorization",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Utilisateur courant avec ses r\u00f4les et sites accessibles.",
+            "schema": {
+              "properties": {
+                "id": {
+                  "example": 12,
+                  "type": "integer"
+                },
+                "login": {
+                  "example": "jdoe",
+                  "type": "string"
+                },
+                "roles": {
+                  "example": [
+                    "user",
+                    "admin"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "sites": {
+                  "items": {
+                    "properties": {
+                      "id": {
+                        "example": 1,
+                        "type": "integer"
+                      },
+                      "name": {
+                        "example": "Site A",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "properties": {
+                "error": {
+                  "example": "unauthorized",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
     "/roles/": {
       "get": {
         "description": "R\u00e9cup\u00e8re la liste de tous les r\u00f4les disponibles.",
@@ -2985,6 +3131,22 @@
         ]
       }
     },
+    "/sites/my": {
+      "get": {
+        "description": "Retourne les sites accessibles \u00e0 l\u2019utilisateur courant.",
+        "responses": {
+          "200": {
+            "description": "Liste des sites."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": [
+          "Site CRUD"
+        ]
+      }
+    },
     "/sites/{site_id}": {
       "delete": {
         "description": "Supprime un site par son ID et tous les \u00e9l\u00e9ments associ\u00e9s (b\u00e2timents, \u00e9tages, BAES, erreurs, cartes) en cascade. Les liaisons user-site-role sont conserv\u00e9es avec site_id=NULL pour maintenir les relations user-role.",
@@ -3272,6 +3434,59 @@
           },
           "404": {
             "description": "Site non trouv\u00e9."
+          }
+        },
+        "tags": [
+          "Site CRUD"
+        ]
+      }
+    },
+    "/sites/{site_id}/baes/unassigned": {
+      "get": {
+        "description": "Liste les BAES non plac\u00e9s (etage_id == null) pour un site donn\u00e9. Si non d\u00e9terminable, renvoie tous les non plac\u00e9s.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des BAES non plac\u00e9s."
+          }
+        },
+        "tags": [
+          "Site CRUD"
+        ]
+      }
+    },
+    "/sites/{site_id}/full": {
+      "get": {
+        "description": "Retourne la hi\u00e9rarchie compl\u00e8te Site \u2192 B\u00e2timents \u2192 \u00c9tages \u2192 BAES, avec latest_status par BAES.",
+        "parameters": [
+          {
+            "description": "ID du site",
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "description": "Param\u00e8tre optionnel pour filtrer les inclusions (ex: batiments,etages,baes,status_latest)",
+            "in": "query",
+            "name": "include",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hi\u00e9rarchie du site."
+          },
+          "404": {
+            "description": "Site non trouv\u00e9"
           }
         },
         "tags": [
@@ -4027,6 +4242,54 @@
           },
           "404": {
             "description": "Aucune erreur trouv\u00e9e."
+          }
+        },
+        "tags": [
+          "Status CRUD"
+        ]
+      }
+    },
+    "/status/site/{site_id}/latest": {
+      "get": {
+        "description": "R\u00e9cup\u00e8re les derniers statuts pour tous les BAES d\u2019un site donn\u00e9.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des derniers statuts."
+          },
+          "404": {
+            "description": "Site ou BAES non trouv\u00e9s."
+          }
+        },
+        "tags": [
+          "Status CRUD"
+        ]
+      }
+    },
+    "/status/site/{site_id}/summary": {
+      "get": {
+        "description": "Retourne des compteurs par type pour un site (connexion=0, batterie=4, ok=6, inconnu).",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "site_id",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "R\u00e9sum\u00e9"
+          },
+          "404": {
+            "description": "Site non trouv\u00e9"
           }
         },
         "tags": [

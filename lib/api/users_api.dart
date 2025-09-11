@@ -18,6 +18,12 @@ class UsersApi {
     return User.fromJson((res as Map).cast<String, dynamic>());
   }
 
+  // GET /me - utilisateur courant avec roles et sites accessibles
+  Future<User> me() async {
+    final res = await _client.get('/me');
+    return User.fromJson((res as Map).cast<String, dynamic>());
+  }
+
   Future<User> create({required String login, required String password, Map<String, dynamic>? extra}) async {
     final body = {'login': login, 'password': password, ...?extra};
     final res = await _client.post('/users/', body: body);
