@@ -44,7 +44,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
       // Rôles utilisateur
       try {
         final me = await _usersApi.me();
-        _isAdminLike = me.roles.contains('admin') || me.roles.contains('superadmin');
+        _isAdminLike = RoleUtils.isAdminLike(me.roles);
         // Si backend filtre /sites/ par utilisateur, on peut utiliser me.sites
       } catch (e) {
         // Non bloquant si /me indisponible
@@ -452,11 +452,13 @@ class _LeftDrawerState extends State<LeftDrawer> {
           return ListTile(
             leading: Icon(info.icon, color: _colorForCode(st?.erreur)),
             title: Text(b.name),
-            trailing: IconButton(
-              icon: const Icon(Icons.map),
-              tooltip: 'Aller à la gestion carte',
-              onPressed: _gotoGestionCarte,
-            ),
+            trailing: _isAdminLike
+                ? IconButton(
+                    icon: const Icon(Icons.map),
+                    tooltip: 'Aller à la gestion carte',
+                    onPressed: _gotoGestionCarte,
+                  )
+                : null,
           );
         }).toList(),
       ),
@@ -477,6 +479,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
   }
 
   Future<void> _openManageSitesDialog() async {
+    if (!_isAdminLike) return;
     showDialog(
       context: context,
       builder: (ctx) => _ManageSitesDialog(

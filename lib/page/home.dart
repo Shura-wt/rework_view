@@ -96,19 +96,25 @@ class _HomePageState extends State<HomePage> {
             textStyle: const TextStyle(fontSize: 30),
           ),
           actions: [
-              _buildNavButton(
-                context: context,
-                page: 'carte',
-                text: "Gestion carte",
-                route: '/admin/carte',
-                textStyle: const TextStyle(fontSize: 30),
+              RoleGate(
+                anyOf: const [AppRole.admin, AppRole.superAdmin],
+                child: _buildNavButton(
+                  context: context,
+                  page: 'carte',
+                  text: "Gestion carte",
+                  route: '/admin/carte',
+                  textStyle: const TextStyle(fontSize: 30),
+                ),
               ),
-              _buildNavButton(
-                context: context,
-                page: 'utilisateurs',
-                text: "Gestion utilisateurs",
-                route: '/admin/utilisateurs',
-                textStyle: const TextStyle(fontSize: 30),
+              RoleGate(
+                anyOf: const [AppRole.admin, AppRole.superAdmin],
+                child: _buildNavButton(
+                  context: context,
+                  page: 'utilisateurs',
+                  text: "Gestion utilisateurs",
+                  route: '/admin/utilisateurs',
+                  textStyle: const TextStyle(fontSize: 30),
+                ),
               ),
             IconButton(
               icon: const Icon(Icons.logout),
