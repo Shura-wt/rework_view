@@ -9,6 +9,7 @@ import 'models/domain/etage.dart';
 import 'models/domain/site.dart';
 import 'models/dto/site_lite.dart';
 import 'models/error_info.dart';
+import 'models/models.dart';
 import 'services/status_poller.dart';
 import 'widgets/status_history_per_baes_list.dart';
 import 'auth/roles_guard.dart';
