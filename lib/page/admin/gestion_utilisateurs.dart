@@ -124,10 +124,10 @@ class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
   DataTable _buildDataTable() {
     return DataTable(
       columns: const [
-        DataColumn(label: Text("Nom d'utilisateur")),
-        DataColumn(label: Text('Rôles')),
-        DataColumn(label: Text('Sites')),
-        DataColumn(label: Text('Actions')),
+        DataColumn(label: Text("Nom d'utilisateur" , style: TextStyle(fontWeight: FontWeight.bold),) ),
+        DataColumn(label: Text('Rôles', style: TextStyle(fontWeight: FontWeight.bold),) ),
+        DataColumn(label: Text('Sites', style: TextStyle(fontWeight: FontWeight.bold),) ),
+        DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold),) )
       ],
       rows: _users.map((u) {
         final theme = Theme.of(context);

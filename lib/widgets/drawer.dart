@@ -11,6 +11,8 @@ class _LeftDrawerState extends State<LeftDrawer> {
   final _sitesApi = SitesApi(SessionManager.instance.client);
   final _statusApi = StatusApi(SessionManager.instance.client);
   final _usersApi = UsersApi(SessionManager.instance.client);
+  final _rolesApi = RolesApi(SessionManager.instance.client);
+  final _usrSiteRoleApi = UserSiteRoleApi(SessionManager.instance.client);
 
   // État
   List<SiteLite> _sites = const [];
@@ -28,6 +30,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
   bool _showBattery = true;
 
   bool _isAdminLike = false;
+  User? _currentUser; // utilisateur courant pour l'assignation auto
 
   @override
   void initState() {
@@ -44,6 +47,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
       // Rôles utilisateur
       try {
         final me = await _usersApi.me();
+        _currentUser = me;
         _isAdminLike = RoleUtils.isAdminLike(me.roles);
         // Si backend filtre /sites/ par utilisateur, on peut utiliser me.sites
       } catch (e) {
@@ -91,6 +95,52 @@ class _LeftDrawerState extends State<LeftDrawer> {
       // Optionnel, l'endpoint peut ne pas exister; ignorer silencieusement
       ApiErrorHandler.logDebug(e, context: 'sites.unassigned');
       setState(() => _unassigned = const []);
+    }
+  }
+
+  // Assigne automatiquement le site créé au créateur avec rôle identique (admin/super admin)
+  Future<void> _assignSiteToCreator(SiteLite created) async {
+    try {
+      // Récupère l'utilisateur courant si non en cache
+      final user = _currentUser ?? await _usersApi.me();
+      _currentUser = user;
+
+      // Détermine le rôle cible à partir des rôles globaux
+      final rolesSet = RoleUtils.normalizeAll(user.roles);
+      String? targetKey; // clé normalisée sans espaces/traits
+      if (rolesSet.contains(AppRole.superAdmin)) {
+        targetKey = 'superadmin';
+      } else if (rolesSet.contains(AppRole.admin)) {
+        targetKey = 'admin';
+      } else {
+        // Si l'utilisateur n'est ni admin ni super admin, ne rien faire (selon besoin exprimé)
+        return;
+      }
+
+      // Recherche l'id du rôle correspondant
+      String _norm(String s) => s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+      final allRoles = await _rolesApi.list();
+      final match = allRoles.firstWhere(
+        (r) => _norm(r.name) == targetKey,
+        orElse: () => Role(id: 0, name: ''),
+      );
+      if (match.id == 0) {
+        throw ApiException("Rôle '$targetKey' introuvable", statusCode: 404);
+      }
+
+      // Crée la relation user-site-role
+      await _usrSiteRoleApi.create(userId: user.id, siteId: created.id, roleId: match.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Site attribué à ${user.login} avec rôle ${targetKey == 'superadmin' ? 'super admin' : 'admin'}")),
+        );
+      }
+    } on Object catch (e) {
+      ApiErrorHandler.logDebug(e, context: 'assign_site_to_creator');
+      if (mounted) {
+        ApiErrorHandler.showSnackBar(context, e, action: 'assigner site à l’utilisateur');
+      }
     }
   }
 
@@ -485,7 +535,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
       builder: (ctx) => _ManageSitesDialog(
         sites: _sites,
         onCreate: (name) async {
-          await ApiErrorHandler.run<SiteLite>(
+          final created = await ApiErrorHandler.run<SiteLite>(
             context,
                 () async {
               final created = await _sitesApi.create(name);
@@ -497,6 +547,9 @@ class _LeftDrawerState extends State<LeftDrawer> {
             },
             action: 'create site',
           );
+          if (created != null) {
+            await _assignSiteToCreator(created);
+          }
           if (mounted) Navigator.pop(ctx);
         },
         onRename: (siteId, newName) async {

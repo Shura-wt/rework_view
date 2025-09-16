@@ -28,7 +28,6 @@ part 'widgets/gradiant_background.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SessionManager.instance.init();
-  // Start global polling if already authenticated
   if (SessionManager.instance.isAuthenticated) {
     await LatestStatusPoller.instance.start(interval: const Duration(seconds: 5));
   }
