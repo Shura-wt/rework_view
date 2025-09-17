@@ -36,7 +36,8 @@ class _LoginState extends State<LoginPage> {
       () => SessionManager.instance.login(login: login, password: password),
       action: 'login',
       onSuccess: (_) async {
-        // Start global polling for statuses now that we are authenticated
+        // Invalidate any stale role cache and start polling after auth
+        RolesService.instance.clearCache();
         await LatestStatusPoller.instance.start(interval: const Duration(seconds: 5));
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/home');

@@ -10,21 +10,82 @@ class GestionUtilisateursPage extends StatefulWidget {
 class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
   bool _loading = true;
   List<User> _users = const [];
+  // Contexte courant pour filtrage par site
+  bool _isSuperAdmin = false;
+  int? _currentSiteId; // site effectif utilisé pour filtrer/afficher
+  Map<int, String> _siteRoleByUser = const {}; // userId -> roleName pour le site courant
+
+  // Suivi de la sélection de site brute pour éviter les rechargements en boucle
+  int? _lastSelectedSiteId;
+  bool _reloadScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    _lastSelectedSiteId = SessionManager.instance.selectedSiteId;
     _loadUsers();
   }
 
   Future<void> _loadUsers() async {
+    // reset le flag de planification pour autoriser un re-scheduling après ce chargement
+    _reloadScheduled = false;
     setState(() => _loading = true);
     try {
-      final api = UsersApi(SessionManager.instance.client);
-      final users = await api.list();
+      final usersApi = UsersApi(SessionManager.instance.client);
+      final usrSiteRoleApi = UserSiteRoleApi(SessionManager.instance.client);
+
+      // Contexte: user courant + site courant
+      User? me;
+      try {
+        me = await usersApi.me();
+      } catch (e) {
+        ApiErrorHandler.logDebug(e, context: 'users.me');
+      }
+      final roles = me?.roles ?? const [];
+      final isSuper = RoleUtils.normalizeAll(roles).contains(AppRole.superAdmin);
+      final rawSelected = SessionManager.instance.selectedSiteId;
+      int? siteId = rawSelected;
+      siteId ??= (me != null && me.sites.isNotEmpty ? me.sites.first.id : null);
+
+      // Récupère tous les utilisateurs
+      List<User> users = await usersApi.list();
+
+      // Si pas super admin: restreindre aux utilisateurs du site courant et préparer leur rôle pour ce site
+      Map<int, String> siteRoleByUser = {};
+      if (!isSuper && siteId != null) {
+        try {
+          final list = await usrSiteRoleApi.siteUsers(siteId);
+          final ids = <int>{};
+          for (final raw in list) {
+            if (raw is Map) {
+              final m = raw.cast<String, dynamic>();
+              final uidDyn = m['user_id'] ?? m['userId'];
+              final uid = uidDyn is int ? uidDyn : int.tryParse(uidDyn?.toString() ?? '');
+              final roleNameDyn = m['role_name'] ?? m['roleName'] ?? m['role'];
+              final roleName = roleNameDyn?.toString();
+              if (uid != null) {
+                ids.add(uid);
+                if (roleName != null && roleName.isNotEmpty) {
+                  siteRoleByUser[uid] = roleName;
+                }
+              }
+            }
+          }
+          users = users.where((u) => ids.contains(u.id)).toList(growable: false);
+        } catch (e) {
+          // Fallback: filtrer via la présence du site dans u.sites
+          ApiErrorHandler.logDebug(e, context: 'user_site_role.siteUsers');
+          users = users.where((u) => u.sites.any((s) => s.id == siteId)).toList(growable: false);
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _users = users;
+        _isSuperAdmin = isSuper;
+        _currentSiteId = siteId;
+        _siteRoleByUser = siteRoleByUser;
+        _lastSelectedSiteId = rawSelected; // mémorise la sélection brute
         _loading = false;
       });
     } on Object catch (e) {
@@ -65,31 +126,84 @@ class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
   }
 
   Future<void> _deleteUtilisateur(User user) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Supprimer'),
-        content: Text("Voulez-vous vraiment supprimer l'utilisateur '${user.login}' ?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Supprimer')),
-        ],
-      ),
-    );
-    if (confirm != true) return;
+    // Détermine le contexte
+    final isSuper = _isSuperAdmin;
+    final siteId = _currentSiteId ?? SessionManager.instance.selectedSiteId;
+
+    // Si super admin: proposer le choix. Sinon: suppression des relations du site courant uniquement.
+    String? choice; // 'site' ou 'all'
+    if (isSuper) {
+      choice = await showDialog<String>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Supprimer l\'utilisateur'),
+          content: Text(
+              siteId != null
+                  ? "Que souhaitez-vous faire pour '${user.login}' ?"
+                  : "Aucun site sélectionné. Voulez-vous supprimer définitivement l\'utilisateur '${user.login}' ?"),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Annuler')),
+            if (siteId != null)
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'site'),
+                child: const Text('Retirer du site'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, 'all'),
+              child: const Text('Supprimer définitivement'),
+            ),
+          ],
+        ),
+      );
+      if (choice == null) return; // annulé
+    } else {
+      // Admin (non super): uniquement retrait du site courant
+      if (siteId == null) {
+        ApiErrorHandler.showSnackBar(context, 'Aucun site sélectionné. Impossible de retirer l\'utilisateur du site.');
+        return;
+      }
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Retirer du site'),
+          content: Text("Retirer l\'utilisateur '${user.login}' du site courant ?"),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Retirer')),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+      choice = 'site';
+    }
 
     try {
-      final api = UsersApi(SessionManager.instance.client);
-      await api.deleteUser(user.id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Utilisateur supprimé')),
-      );
+      if (choice == 'site' && siteId != null) {
+        // Supprime toutes les relations user<->site (rôles compris)
+        final usrSiteRoleApi = UserSiteRoleApi(SessionManager.instance.client);
+        await usrSiteRoleApi.deleteUserSite(user.id, siteId);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Utilisateur retiré du site')),
+        );
+      } else if (choice == 'all') {
+        // Suppression complète en base
+        final api = UsersApi(SessionManager.instance.client);
+        await api.deleteUser(user.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Utilisateur supprimé définitivement')),
+        );
+      }
       await _loadUsers();
     } on Object catch (e) {
-      ApiErrorHandler.logDebug(e, context: 'users.delete');
+      ApiErrorHandler.logDebug(e, context: choice == 'site' ? 'user_site_role.deleteUserSite' : 'users.delete');
       if (mounted) {
-        ApiErrorHandler.showSnackBar(context, e, action: 'Suppression utilisateur');
+        ApiErrorHandler.showSnackBar(
+          context,
+          e,
+          action: choice == 'site' ? 'Retrait du site' : 'Suppression utilisateur',
+        );
       }
     }
   }
@@ -131,10 +245,21 @@ class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
       ],
       rows: _users.map((u) {
         final theme = Theme.of(context);
+
+        // Détermine les rôles à afficher (site courant uniquement si non super admin)
+        List<String> finalRoles;
+        if (_isSuperAdmin || _currentSiteId == null) {
+          finalRoles = u.roles;
+        } else {
+          finalRoles = [];
+          final r = _siteRoleByUser[u.id];
+          if (r != null && r.isNotEmpty) finalRoles = [r];
+        }
+
         final rolesChips = Wrap(
           spacing: 8,
           runSpacing: 4,
-          children: u.roles
+          children: finalRoles
               .map((r) {
                 final c = _roleColor(r, theme);
                 return Chip(
@@ -145,7 +270,15 @@ class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
               })
               .toList(growable: false),
         );
-        final sitesText = u.sites.map((s) => s.name).join(', ');
+
+        // Détermine le texte des sites (site courant uniquement si non super admin)
+        String sitesText;
+        if (_isSuperAdmin || _currentSiteId == null) {
+          sitesText = u.sites.map((s) => s.name).join(', ');
+        } else {
+          final match = u.sites.where((s) => s.id == _currentSiteId).toList();
+          sitesText = match.isNotEmpty ? match.first.name : '-';
+        }
         return DataRow(cells: [
           DataCell(Text(u.login)),
           DataCell(rolesChips),
@@ -174,6 +307,14 @@ class _GestionUtilisateursPageState extends State<GestionUtilisateursPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Si la sélection de site a changé via le Drawer, recharger (sauf si déjà en cours)
+    final sid = SessionManager.instance.selectedSiteId;
+    if (!_loading && !_reloadScheduled && sid != _lastSelectedSiteId) {
+      _reloadScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadUsers();
+      });
+    }
     
     Widget content;
     if( _loading ) {

@@ -56,9 +56,37 @@ class _LeftDrawerState extends State<LeftDrawer> {
       }
 
       // Sites accessibles
-      final sites = await _sitesApi.list();
+      // Si super admin: voir tous les sites disponibles
+      final isSuperAdmin = _currentUser != null &&
+          RoleUtils.normalizeAll(_currentUser!.roles).contains(AppRole.superAdmin);
+
+      List<SiteLite> sites;
+      if (isSuperAdmin) {
+        sites = await _sitesApi.list();
+      } else if (_currentUser != null && _currentUser!.sites.isNotEmpty) {
+        // Utilisateur classique: restreindre aux sites attribués
+        sites = _currentUser!.sites;
+      } else {
+        // Fallback si /me indisponible ou ne retourne pas de sites
+        sites = await _sitesApi.list();
+      }
       _sites = sites;
-      _selectedSite ??= sites.isNotEmpty ? sites.first : null;
+      // Respecter la sélection existante si disponible
+      final currentSid = SessionManager.instance.selectedSiteId;
+      SiteLite? desired;
+      if (currentSid != null) {
+        try {
+          desired = sites.firstWhere((s) => s.id == currentSid);
+        } catch (_) {
+          desired = null;
+        }
+      }
+      desired ??= sites.isNotEmpty ? sites.first : null;
+      _selectedSite = desired;
+      // Ne met à jour la sélection globale que si elle est absente, différente, ou n'existe plus
+      if (currentSid != _selectedSite?.id) {
+        SessionManager.instance.selectedSiteId = _selectedSite?.id;
+      }
 
       // Site complet + baes non placés
       if (_selectedSite != null) {
@@ -73,8 +101,10 @@ class _LeftDrawerState extends State<LeftDrawer> {
           if (st.baesId != null) st.baesId!: st,
       };
 
+      if (!mounted) return;
       setState(() => _loading = false);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -84,16 +114,19 @@ class _LeftDrawerState extends State<LeftDrawer> {
 
   Future<void> _loadSiteFull(int siteId) async {
     final site = await _sitesApi.getFull(siteId, include: 'batiments,etages,baes,status_latest');
+    if (!mounted) return;
     setState(() => _siteFull = site);
   }
 
   Future<void> _loadUnassigned(int siteId) async {
     try {
       final list = await _sitesApi.unassignedBaes(siteId);
+      if (!mounted) return;
       setState(() => _unassigned = list);
     } catch (e) {
       // Optionnel, l'endpoint peut ne pas exister; ignorer silencieusement
       ApiErrorHandler.logDebug(e, context: 'sites.unassigned');
+      if (!mounted) return;
       setState(() => _unassigned = const []);
     }
   }
@@ -153,11 +186,15 @@ class _LeftDrawerState extends State<LeftDrawer> {
       _loading = true;
       _error = null;
     });
+    // Propager globalement la sélection de site
+    SessionManager.instance.selectedSiteId = site.id;
     try {
       await _loadSiteFull(site.id);
       await _loadUnassigned(site.id);
+      if (!mounted) return;
       setState(() => _loading = false);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e;
         _loading = false;
@@ -247,7 +284,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
           () => _statusApi.updateBaesType(b.id, erreur, isIgnored: true),
       action: 'ignorer',
     );
-    if (updated != null) {
+    if (updated != null && mounted) {
       setState(() {
         _latestByBaes = Map<int, BaeStatus>.from(_latestByBaes)..[b.id] = updated;
       });
@@ -260,7 +297,7 @@ class _LeftDrawerState extends State<LeftDrawer> {
           () => _statusApi.updateBaesType(b.id, erreur, isSolved: true),
       action: 'acquitter',
     );
-    if (updated != null) {
+    if (updated != null && mounted) {
       setState(() {
         _latestByBaes = Map<int, BaeStatus>.from(_latestByBaes)..[b.id] = updated;
       });
@@ -539,10 +576,12 @@ class _LeftDrawerState extends State<LeftDrawer> {
             context,
                 () async {
               final created = await _sitesApi.create(name);
-              setState(() {
-                _sites = [..._sites, created];
-                _selectedSite ??= created;
-              });
+              if (mounted) {
+                setState(() {
+                  _sites = [..._sites, created];
+                  _selectedSite ??= created;
+                });
+              }
               return created;
             },
             action: 'create site',
@@ -557,10 +596,12 @@ class _LeftDrawerState extends State<LeftDrawer> {
             context,
                 () async {
               final updated = await _sitesApi.update(siteId, name: newName);
-              setState(() {
-                _sites = _sites.map((s) => s.id == siteId ? updated : s).toList(growable: false);
-                if (_selectedSite?.id == siteId) _selectedSite = updated;
-              });
+              if (mounted) {
+                setState(() {
+                  _sites = _sites.map((s) => s.id == siteId ? updated : s).toList(growable: false);
+                  if (_selectedSite?.id == siteId) _selectedSite = updated;
+                });
+              }
               return updated;
             },
             action: 'rename site',
@@ -571,13 +612,17 @@ class _LeftDrawerState extends State<LeftDrawer> {
             context,
                 () async {
               final res = await _sitesApi.deleteSite(siteId);
-              setState(() {
-                _sites = _sites.where((s) => s.id != siteId).toList();
-                if (_selectedSite?.id == siteId) {
-                  _selectedSite = _sites.isNotEmpty ? _sites.first : null;
-                  _siteFull = null;
-                }
-              });
+              if (mounted) {
+                setState(() {
+                  _sites = _sites.where((s) => s.id != siteId).toList();
+                  if (_selectedSite?.id == siteId) {
+                    _selectedSite = _sites.isNotEmpty ? _sites.first : null;
+                    _siteFull = null;
+                  }
+                });
+                // Met à jour la sélection globale après suppression
+                SessionManager.instance.selectedSiteId = _selectedSite?.id;
+              }
               return res;
             },
             action: 'delete site',

@@ -97,7 +97,7 @@ class _HomePageState extends State<HomePage> {
           ),
           actions: [
               RoleGate(
-                anyOf: const [AppRole.admin, AppRole.superAdmin],
+                anyOf: const [AppRole.admin, AppRole.superAdmin, AppRole.technicien],
                 child: _buildNavButton(
                   context: context,
                   page: 'carte',
@@ -121,6 +121,8 @@ class _HomePageState extends State<HomePage> {
               onPressed: () async {
                 try {
                   // Stop polling before logging out to avoid authenticated calls after session cleared
+                  // Clear roles cache to avoid stale visibility after logout
+                  RolesService.instance.clearCache();
                   LatestStatusPoller.instance.stop();
                   await SessionManager.instance.logout();
                 } on Object catch (e) {

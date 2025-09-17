@@ -46,9 +46,15 @@ class MyApp extends StatelessWidget {
         // Page home (protégée, mais accessible par tout rôle)
         '/home': (context) => const HomePage(),
         '/view': (context) => const VisualisationCartePage(),
-        // Pages admin (nécessitent requiresAdmin = true)
-        '/admin/carte': (context) => const HomePage(initialPage: 'carte'),
-        '/admin/utilisateurs': (context) => const HomePage(initialPage: 'utilisateurs'),
+        // Pages admin protégées par rôles
+        '/admin/carte': (context) => const PageGuard(
+              anyOf: [AppRole.admin, AppRole.superAdmin, AppRole.technicien],
+              child: HomePage(initialPage: 'carte'),
+            ),
+        '/admin/utilisateurs': (context) => const PageGuard(
+              anyOf: [AppRole.admin, AppRole.superAdmin],
+              child: HomePage(initialPage: 'utilisateurs'),
+            ),
       },
 
       // Page de démarrage: AuthGate redirige selon la présence du token

@@ -47,9 +47,27 @@ class UserSiteRoleApi {
   // GET /user_site_role/site/{site_id}/users
   Future<List<Map<String, dynamic>>> siteUsers(int siteId) async {
     final res = await _client.get('/user_site_role/site/$siteId/users');
-    return (res as List)
-        .map((e) => (e as Map).cast<String, dynamic>())
-        .toList(growable: false);
+
+    if (res is List) {
+      return res
+          .where((e) => e is Map)
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .toList(growable: false);
+    }
+
+    if (res is Map) {
+      final map = (res as Map).cast<String, dynamic>();
+      final candidates = map['users'] ?? map['data'] ?? map['results'] ?? map['list'] ?? map['items'];
+      if (candidates is List) {
+        return candidates
+            .where((e) => e is Map)
+            .map((e) => (e as Map).cast<String, dynamic>())
+            .toList(growable: false);
+      }
+      return [map];
+    }
+
+    return const [];
   }
 
   // DELETE /user_site_role/user/{user_id}/site/{site_id}
