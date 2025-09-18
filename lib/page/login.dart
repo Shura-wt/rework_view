@@ -36,9 +36,50 @@ class _LoginState extends State<LoginPage> {
       () => SessionManager.instance.login(login: login, password: password),
       action: 'login',
       onSuccess: (_) async {
-        // Invalidate any stale role cache and start polling after auth
+        // 1) Invalidate any stale role cache
         RolesService.instance.clearCache();
+
+        // 2) Ensure a selected site is set and roles are loaded for it
+        try {
+          final usersApi = UsersApi(SessionManager.instance.client);
+          final sitesApi = SitesApi(SessionManager.instance.client);
+
+          final me = await usersApi.me();
+          final isSuper = RoleUtils.normalizeAll(me.roles).contains(AppRole.superAdmin);
+
+          // Build the accessible sites list depending on role
+          List<SiteLite> accessibleSites = [];
+          if (isSuper) {
+            accessibleSites = await sitesApi.list();
+          } else {
+            accessibleSites = me.sites;
+          }
+
+          // Validate persisted selected site against accessible sites
+          int? desired = SessionManager.instance.selectedSiteId;
+          final isDesiredValid = desired != null && accessibleSites.any((s) => s.id == desired);
+          if (!isDesiredValid) {
+            desired = accessibleSites.isNotEmpty ? accessibleSites.first.id : null;
+          }
+
+          // Update global selection (persists via SessionManager)
+          if (SessionManager.instance.selectedSiteId != desired) {
+            SessionManager.instance.selectedSiteId = desired;
+          }
+
+          // Prime roles cache for the selected site (if any)
+          if (desired != null) {
+            await RolesService.instance.currentRoles(forceRefresh: true);
+          }
+        } catch (e) {
+          // Non-blocking: if this fails, the Drawer can still initialize later
+          ApiErrorHandler.logDebug(e, context: 'post-login site/roles init');
+        }
+
+        // 3) Start polling after auth
         await LatestStatusPoller.instance.start(interval: const Duration(seconds: 5));
+
+        // 4) Navigate to home
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/home');
       },
