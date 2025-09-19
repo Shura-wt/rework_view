@@ -17,3 +17,4 @@ export 'dto/relation.dart';
 export 'dto/user.dart';
 export 'parsers.dart';
 export 'error_info.dart';
+export 'dto/assignment.dart';
